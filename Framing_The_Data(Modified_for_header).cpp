@@ -4,16 +4,15 @@
 #include <cstdint>
 using namespace std;
 
-#include<iostream>
-using namespace std;
-
 uint16_t read_u16(const uint8_t* x){
     uint16_t v = x[0] << 8 | x[1];
     return v;
 };
 
 uint32_t read_u32(const uint8_t* x){
-    uint32_t v = static_cast<uint32_t>(x[0]) << 24 | static_cast<uint32_t>(x[1]) << 16 | static_cast<uint32_t>(x[2]) << 8 | static_cast<uint32_t>(x[3]) ;
+    uint32_t v = 
+    static_cast<uint32_t>(x[0]) << 24 | static_cast<uint32_t>(x[1]) << 16 | 
+    static_cast<uint32_t>(x[2]) << 8 | static_cast<uint32_t>(x[3]) ;
     return v;
 };
 
