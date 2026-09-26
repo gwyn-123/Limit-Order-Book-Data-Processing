@@ -91,6 +91,18 @@ delete_order decode_delete_order(const uint8_t* x){
     return delete_order{read_u64(x+11)};
 }
 
+struct cancel_order{
+    uint64_t order_reference_no;
+    uint32_t cancel_share_count;
+};// X
+
+cancel_order decode_cancel_order(const uint8_t* x){
+    return cancel_order{
+        read_u64(x + 11),
+        read_u32(x + 19)
+    };
+}
+
 int main(){
     body_length_table();
 
@@ -107,11 +119,18 @@ int main(){
     //Create dummy delete order
     delete_order temp_delete_order;
 
-    //Add order flag
+    //Create dummy cancel order
+    cancel_order temp_cancel_order;
+
+    //Add order flag ,is this the first header we have?
     bool add_order_flag = false;
 
-    //Delete order flag
-    bool delete_order_flag = false;
+    //Delete order flag ,is this the first header we have?
+    bool delete_order_flag= false;
+
+    //Cancel order flag ,is this the first header we have?
+    bool cancel_order_flag = false;
+
     //Loop to test for decode_add_order
     while (true){
         limit_order_data_book_data.read(reinterpret_cast<char*>(buf), 2);
@@ -123,39 +142,46 @@ int main(){
         message_header temp_header = decode_header(n_buf);
         
         //Check if the header is 'A'
-        if (temp_header.message_type == 'A'){
+        if (temp_header.message_type == 'A' && !add_order_flag){
             temp_add_order = decode_add_order(n_buf);
             add_order_flag = true;
-        } else if (temp_header.message_type == 'D'){
+        } else if (temp_header.message_type == 'D' && !delete_order_flag){
             // Check if the header is 'D'
             temp_delete_order = decode_delete_order(n_buf);
             delete_order_flag = true;
+        } else if (temp_header.message_type == 'X' && !cancel_order_flag){
+            //Check if the header is 'X'
+            temp_cancel_order = decode_cancel_order(n_buf);
+            cancel_order_flag = true;
         }
 
         //The loop terminates when we have found an add order and a delete order
-        if (add_order_flag && delete_order_flag){
+        if (add_order_flag && delete_order_flag && cancel_order_flag){
             break;
         }
     }
 
     //Checking if the order reference number are equal
     if (temp_add_order.order_reference_no == temp_delete_order.order_reference_no){
-        cout << "The order reference numbers of both are equal" << endl
+        cout << "The order reference numbers of both first add and delete order are equal" << endl
              << "The match order reference number of both is: " << temp_add_order.order_reference_no
              << endl;
     } else {
-        cout << "The order reference numbers of both aren't equal" << endl
+        cout << "The order reference numbers of both first add and delete order aren't equal" << endl
              << "The order reference number of the add order is: " << temp_add_order.order_reference_no 
              << endl << "The order reference number of the delete order is: " << temp_delete_order.order_reference_no
              << endl;
     }
 
-    cout << "The first order 'A' detail: " << endl;
-    cout << "Order reference number: " << temp_add_order.order_reference_no << endl;
-    cout << "Side: " << temp_add_order.side << endl;
-    cout << "Shares' size: " << temp_add_order.shares << endl;
-    cout << "Price in total: " << temp_add_order.price << endl;
-    cout << "Order symbol : ";
+    cout << "\nThe first order 'A' detail: " << endl 
+         << "Order reference number: " << temp_add_order.order_reference_no << endl 
+         << "Side: " << temp_add_order.side << endl 
+         << "Shares' size: " << temp_add_order.shares << endl 
+         << "Price in total: " << temp_add_order.price << endl 
+         << "Order symbol : ";
     cout.write(temp_add_order.symbol, 8) << endl;
+    cout << "\nThe first cancel order has reference number: " << temp_cancel_order.order_reference_no
+         << endl << "The first cancel order cancelled: " << temp_cancel_order.cancel_share_count << " shares"
+         << endl;
     return 0;
 }
