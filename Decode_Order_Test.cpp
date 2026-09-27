@@ -103,6 +103,22 @@ cancel_order decode_cancel_order(const uint8_t* x){
     };
 }
 
+struct replace_order{
+    uint64_t old_order_reference_no;
+    uint64_t new_order_reference_no;
+    uint32_t shares;
+    uint32_t price;
+};//U
+
+replace_order decode_replace_order(const uint8_t* x){
+    return replace_order{
+        read_u64(x + 11),
+        read_u64(x + 19),
+        read_u32(x + 27),
+        read_u32(x + 31)
+    };
+}
+
 int main(){
     body_length_table();
 
@@ -122,14 +138,20 @@ int main(){
     //Create dummy cancel order
     cancel_order temp_cancel_order;
 
-    //Add order flag ,is this the first header we have?
+    //Create dummy replace order
+    replace_order temp_replace_order;
+
+    //Add order flag , is this the first header we have?
     bool add_order_flag = false;
 
-    //Delete order flag ,is this the first header we have?
+    //Delete order flag , is this the first header we have?
     bool delete_order_flag= false;
 
-    //Cancel order flag ,is this the first header we have?
+    //Cancel order flag , is this the first header we have?
     bool cancel_order_flag = false;
+
+    //Replace order flag, is this the first header we have?
+    bool replace_order_flag = false;
 
     //Loop to test for decode_add_order
     while (true){
@@ -153,10 +175,14 @@ int main(){
             //Check if the header is 'X'
             temp_cancel_order = decode_cancel_order(n_buf);
             cancel_order_flag = true;
+        } else if (temp_header.message_type == 'U' && !replace_order_flag){
+            //Check if the header is 'U'
+            temp_replace_order = decode_replace_order(n_buf);
+            replace_order_flag = true;
         }
 
         //The loop terminates when we have found an add order and a delete order
-        if (add_order_flag && delete_order_flag && cancel_order_flag){
+        if (add_order_flag && delete_order_flag && cancel_order_flag && replace_order_flag){
             break;
         }
     }
@@ -182,6 +208,12 @@ int main(){
     cout.write(temp_add_order.symbol, 8) << endl;
     cout << "\nThe first cancel order has reference number: " << temp_cancel_order.order_reference_no
          << endl << "The first cancel order cancelled: " << temp_cancel_order.cancel_share_count << " shares"
+         << endl;
+
+    cout << "\nThe first replace order's old reference number is: " << temp_replace_order.old_order_reference_no
+         << endl << "The first replace order's new reference number is: " << temp_replace_order.new_order_reference_no
+         << endl << "The amount of shares: " << temp_replace_order.shares
+         << endl << "The price of shares: " << temp_replace_order.price
          << endl;
     return 0;
 }
