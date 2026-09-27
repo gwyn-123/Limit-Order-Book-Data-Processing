@@ -45,12 +45,12 @@ struct message_header{
 };
 
 message_header decode_header(const uint8_t* x){
-    message_header decoded_header;
-    decoded_header.message_type = static_cast<char>(x[0]);
-    decoded_header.stock_locate = read_u16(x + 1);
-    decoded_header.tracking_number = read_u16(x + 3);
-    decoded_header.time_stamp = read_u48(x + 5);
-    return decoded_header;
+    return message_header{
+        static_cast<char>(x[0]),
+        read_u16(x + 1),
+        read_u16(x + 3),
+        read_u48(x + 5)
+    };
 }
 
 uint16_t expected_body_length[256] = {};
@@ -119,6 +119,18 @@ replace_order decode_replace_order(const uint8_t* x){
     };
 }
 
+struct add_order_MPID_attribution{
+    add_order adjunct_add_order;
+    char attribution[4];
+};//F
+
+add_order_MPID_attribution decode_add_order_MPID_attribution(const uint8_t* x){
+    add_order_MPID_attribution temp_add_order_F;
+    temp_add_order_F.adjunct_add_order = decode_add_order(x);
+    memcpy(temp_add_order_F.attribution, x + 36, 4);
+    return temp_add_order_F;
+}
+
 int main(){
     body_length_table();
 
@@ -153,7 +165,9 @@ int main(){
     //Replace order flag, is this the first header we have?
     bool replace_order_flag = false;
 
-    //Loop to test for decode_add_order
+    //F order counter
+    int f_counter = 0;
+    //Loop to test for decoder
     while (true){
         limit_order_data_book_data.read(reinterpret_cast<char*>(buf), 2);
         if(!limit_order_data_book_data) break;
@@ -179,14 +193,22 @@ int main(){
             //Check if the header is 'U'
             temp_replace_order = decode_replace_order(n_buf);
             replace_order_flag = true;
-        }
-
-        //The loop terminates when we have found an add order and a delete order
-        if (add_order_flag && delete_order_flag && cancel_order_flag && replace_order_flag){
-            break;
+        } else if (temp_header.message_type == 'F'){
+            add_order_MPID_attribution temp_add_order_F = decode_add_order_MPID_attribution(n_buf);
+            add_order adjunct_add_order_F = temp_add_order_F.adjunct_add_order;
+            cout << adjunct_add_order_F.order_reference_no << " " << adjunct_add_order_F.side
+                 << " " << adjunct_add_order_F.shares << " " << "[";
+            cout.write (adjunct_add_order_F.symbol, 8); 
+            cout << "]"
+                 << " " << adjunct_add_order_F.price << " " << "[";
+            cout.write(temp_add_order_F.attribution, 4);
+            cout << "]"
+                 << endl;
+            f_counter += 1;
         }
     }
 
+    cout << "The number of F order is: " << f_counter << endl;
     //Checking if the order reference number are equal
     if (temp_add_order.order_reference_no == temp_delete_order.order_reference_no){
         cout << "The order reference numbers of both first add and delete order are equal" << endl
