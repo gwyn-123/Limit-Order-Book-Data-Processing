@@ -131,6 +131,20 @@ add_order_MPID_attribution decode_add_order_MPID_attribution(const uint8_t* x){
     return temp_add_order_F;
 }
 
+struct execute_order{
+    uint64_t order_reference_no;
+    uint32_t executed_shares;
+    uint64_t match_no;
+};//E
+
+execute_order decode_execute_order(const uint8_t* x){
+    return execute_order{
+        read_u64(x + 11),
+        read_u32(x + 19),
+        read_u64(x + 23)  
+    };
+}
+
 int main(){
     body_length_table();
 
@@ -153,6 +167,9 @@ int main(){
     //Create dummy replace order
     replace_order temp_replace_order;
 
+    //Create dummy execute order
+    execute_order temp_execute_order;
+
     //Add order flag , is this the first header we have?
     bool add_order_flag = false;
 
@@ -164,6 +181,9 @@ int main(){
 
     //Replace order flag, is this the first header we have?
     bool replace_order_flag = false;
+
+    //Replace execute flag, is this the first header we have?
+    bool execute_order_flag = false;
 
     //F order counter
     int f_counter = 0;
@@ -186,14 +206,15 @@ int main(){
             temp_delete_order = decode_delete_order(n_buf);
             delete_order_flag = true;
         } else if (temp_header.message_type == 'X' && !cancel_order_flag){
-            //Check if the header is 'X'
+            // Check if the header is 'X'
             temp_cancel_order = decode_cancel_order(n_buf);
             cancel_order_flag = true;
         } else if (temp_header.message_type == 'U' && !replace_order_flag){
-            //Check if the header is 'U'
+            // Check if the header is 'U'
             temp_replace_order = decode_replace_order(n_buf);
             replace_order_flag = true;
         } else if (temp_header.message_type == 'F'){
+            // Check if the header is F
             add_order_MPID_attribution temp_add_order_F = decode_add_order_MPID_attribution(n_buf);
             add_order adjunct_add_order_F = temp_add_order_F.adjunct_add_order;
             cout << adjunct_add_order_F.order_reference_no << " " << adjunct_add_order_F.side
@@ -205,6 +226,10 @@ int main(){
             cout << "]"
                  << endl;
             f_counter += 1;
+        } else if (temp_header.message_type == 'E' && !execute_order_flag){
+            // Check if the header is E
+            temp_execute_order = decode_execute_order(n_buf);
+            execute_order_flag = true;
         }
     }
 
@@ -237,5 +262,9 @@ int main(){
          << endl << "The amount of shares: " << temp_replace_order.shares
          << endl << "The price of shares: " << temp_replace_order.price
          << endl;
+
+    cout << "\nThe first executed's order reference number is: " << temp_execute_order.order_reference_no
+         << endl << "The executed shares are: " << temp_execute_order.executed_shares << endl
+         << "The match number is: " << temp_execute_order.match_no << endl;
     return 0;
 }
