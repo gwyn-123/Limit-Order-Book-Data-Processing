@@ -145,6 +145,20 @@ execute_order decode_execute_order(const uint8_t* x){
     };
 }
 
+struct execute_order_with_price {
+    execute_order adjunt_execute_order;
+    char printable;
+    uint32_t execution_price;
+};// C
+
+execute_order_with_price decode_execute_order_with_price (const uint8_t* x){
+    execute_order_with_price temp_ex_ord_with_price;
+    temp_ex_ord_with_price.adjunt_execute_order = decode_execute_order(x);
+    temp_ex_ord_with_price.printable = static_cast<char>(x[31]);
+    temp_ex_ord_with_price.execution_price = read_u32(x + 32);
+    return temp_ex_ord_with_price;
+}
+
 int main(){
     body_length_table();
 
@@ -170,6 +184,9 @@ int main(){
     //Create dummy execute order
     execute_order temp_execute_order;
 
+    //Create dummy execute_order_with_price
+    execute_order_with_price temp_execute_order_with_price;
+
     //Add order flag , is this the first header we have?
     bool add_order_flag = false;
 
@@ -185,8 +202,13 @@ int main(){
     //Replace execute flag, is this the first header we have?
     bool execute_order_flag = false;
 
+    //Replace execute order with price flag, is this the first header we have:
+    bool execute_order_with_price_flag = false;
+
     //F order counter
     int f_counter = 0;
+    //C order counter
+    int c_counter = 0;
     //Loop to test for decoder
     while (true){
         limit_order_data_book_data.read(reinterpret_cast<char*>(buf), 2);
@@ -230,10 +252,21 @@ int main(){
             // Check if the header is E
             temp_execute_order = decode_execute_order(n_buf);
             execute_order_flag = true;
+        } else if (temp_header.message_type == 'C'){
+            //Check if the header is C
+            temp_execute_order_with_price = decode_execute_order_with_price(n_buf);
+            execute_order_with_price_flag = true;
+            execute_order temp_adj =  temp_execute_order_with_price.adjunt_execute_order;
+            c_counter += 1;
+
+            cout << temp_adj.order_reference_no << " " << temp_adj.executed_shares
+                 << " " << temp_adj.match_no << " " << temp_execute_order_with_price.printable
+                 << " " << temp_execute_order_with_price.execution_price << endl;
         }
     }
 
-    cout << "The number of F order is: " << f_counter << endl;
+    cout << "\nThe number of F order is: " << f_counter << endl;
+    cout << "The number of C order is: " << c_counter << endl;
     //Checking if the order reference number are equal
     if (temp_add_order.order_reference_no == temp_delete_order.order_reference_no){
         cout << "The order reference numbers of both first add and delete order are equal" << endl
